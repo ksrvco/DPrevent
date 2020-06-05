@@ -1,0 +1,125 @@
+#!/bin/bash
+# Project name : DPrevent - DOS Prevent Apache WebServer
+# Written by : KsrvcO
+# Version : 1.0
+# Tested on : Linux based operation systems
+# Video demo : https://www.youtube.com/watch?v=E6ahs1iX4Ec
+# Contact me : flower.k2000[at]gmail.com
+if ! [ $(id -u) = 0 ]; then
+	   echo "Run this tool as root privilege.Exited."
+	   exit 1
+else
+	log_dir=/var/log/apache2/access.log
+	if [ -d "/etc/DPrevent/" ] 
+	then
+		rm -rf /etc/DPrevent/attacked.txt
+		rm -rf /etc/DPrevent/result.txt 
+		rm -rf /etc/DPrevent/result2.txt
+	else
+		mkdir -p /etc/DPrevent/
+	fi
+	reset
+	function banner(){
+echo -e "
+
+
+▓█████▄  ██▓███   ██▀███  ▓█████ ██▒   █▓▓█████  ███▄    █ ▄▄▄█████▓
+▒██▀ ██▌▓██░  ██▒▓██ ▒ ██▒▓█   ▀▓██░   █▒▓█   ▀  ██ ▀█   █ ▓  ██▒ ▓▒
+░██   █▌▓██░ ██▓▒▓██ ░▄█ ▒▒███   ▓██  █▒░▒███   ▓██  ▀█ ██▒▒ ▓██░ ▒░
+░▓█▄   ▌▒██▄█▓▒ ▒▒██▀▀█▄  ▒▓█  ▄  ▒██ █░░▒▓█  ▄ ▓██▒  ▐▌██▒░ ▓██▓ ░ 
+░▒████▓ ▒██▒ ░  ░░██▓ ▒██▒░▒████▒  ▒▀█░  ░▒████▒▒██░   ▓██░  ▒██▒ ░ 
+ ▒▒▓  ▒ ▒▓▒░ ░  ░░ ▒▓ ░▒▓░░░ ▒░ ░  ░ ▐░  ░░ ▒░ ░░ ▒░   ▒ ▒   ▒ ░░   
+ ░ ▒  ▒ ░▒ ░       ░▒ ░ ▒░ ░ ░  ░  ░ ░░   ░ ░  ░░ ░░   ░ ▒░    ░    
+ ░ ░  ░ ░░         ░░   ░    ░       ░░     ░      ░   ░ ░   ░      
+   ░                ░        ░  ░     ░     ░  ░         ░          
+ ░                                   ░                              
+"
+	}
+	dpkg -s firewalld &> /dev/null
+	echo " ***************************************************"
+	if [ $? -eq 0 ]; then
+		echo " [!] Requirement package-1 installed on the host."
+	else
+		echo " [!] First install firewalld package on the host.Exiting..."
+	fi
+	echo " ***************************************************"
+	dpkg -s firewall-config &> /dev/null
+	echo " ***************************************************"
+	if [ $? -eq 0 ]; then
+		echo " [!] Requirement package-2 installed on the host."
+	else
+		echo " [!] First install firewall-config package on the host.Exiting..."
+	fi
+	echo " ***************************************************"
+	dpkg -s gawk &> /dev/null
+	echo " ***************************************************"
+	if [ $? -eq 0 ]; then
+		echo " [!] Requirement package-3 installed on the host."
+	else
+		echo " [!] First install gawk package on the host.Exiting..."
+	fi
+	echo " ***************************************************"
+	sleep 1
+	reset
+	banner
+	echo ""
+	echo " [+] Project name : DPrevent - DOS Prevent Apache WebServer"
+	echo " [+] Written by : KsrvcO"
+	echo " [+] Version : 1.0"
+	echo " [+] Contact me : flower.k2000[at]gmail.com"
+	echo ""
+	echo ""
+	echo " 1. Start Monitoring and Defending"
+	echo " 2. Show blocked addresses"
+	echo " 3. Unblock addresses"
+	echo " 4. Exit"
+	echo ""
+	read -p " [+] Choose an option : " option
+	if [ $option == "1" ]
+		then
+			clear
+			echo ""
+			banner
+			echo " [++] Started Monitoring..."
+			echo ""
+			echo ""
+			while true
+			do
+				sleep 10
+				cat $log_dir | cut -d " "  -f 1 | sort | uniq -c | sort -urn | gawk '{ if ($1 > 10) print $2}' > /etc/DPrevent/result.txt
+				cat /etc/DPrevent/result.txt | while read i; do echo $i | zone=$(firewall-cmd --get-active-zones | head -n 1) ; firewall-cmd --zone=$zone --add-rich-rule="rule family=ipv4 source address=$i reject" --permanent &>/dev/null ; firewall-cmd --reload 1>/dev/null ; echo -e " [+] IP address $i Detected as attacker and Blocked." ; echo $i >> /etc/DPrevent/attacked.txt ; cat /etc/DPrevent/attacked.txt | sort -u >> /etc/DPrevent/blockedaddr.txt; done
+			done
+	elif [ $option == "2" ]
+		then
+			clear
+			echo ""
+			banner
+			echo "[++] List of Blocked Attackers Addresses :"
+			echo "-------------------------------------------"
+			firewall-cmd --zone=$zone --list-all | grep "reject" | cut -d "=" -f3 | cut -d '"' -f2
+			echo ""
+	elif [ $option == "3" ]
+		then
+			clear
+			echo ""
+			banner
+			echo "[++] Unblocking Addresses :"
+			echo "-------------------------------"
+			if [ -f "/etc/DPrevent/blockedaddr.txt" ] 
+				then
+					cat /etc/DPrevent/blockedaddr.txt | while read i; do echo $i | zone=$(firewall-cmd --get-active-zones | head -n 1) ; firewall-cmd --zone=$zone --remove-rich-rule="rule family=ipv4 source address=$i reject" --permanent &>/dev/null ; firewall-cmd --reload 1>/dev/null ; echo -e " [+] IP address $i Unblocked." ; rm -rf /etc/DPrevent/blockedaddr.txt ; done
+
+			else
+					echo "[-] You have not any address for unblocking."
+			fi
+			echo ""
+	elif [ $option == "4" ]
+		then
+			echo ""
+			echo " [--] Exiting..."
+			exit
+	else
+		echo " [-] Wrong Selection.Exiting..."
+	fi
+fi
+
